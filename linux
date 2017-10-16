@@ -1,0 +1,241 @@
+#!/bin/bash
+
+set -e
+set -u
+
+script_dir="${BASH_SOURCE%/*}"
+
+if [[ -z "${BASH_HELPERS_LOADED+x}" && -f "$script_dir/bash_helpers/bash_helpers.sh" ]] ; then
+	source "$script_dir/bash_helpers/bash_helpers.sh"
+fi
+
+function make_dockerfile()
+{
+
+	get_target_path $1
+	get_source_paths $1
+
+	filter_dockerfile < "${_source_paths[0]}" > "$_target_path"
+
+}
+
+function build_docker_image()
+{
+
+	get_source_paths $1
+
+	local dockerfile_path="${_source_paths[0]}"
+	local image="${dockerfile_path##*Dockerfile-}"
+	local dockerfile="${dockerfile_path##*/}"
+
+	docker build --file "$dockerfile" --tag "$image" "$script_dir"
+
+}
+
+function filter_dockerfile()
+{
+
+	load_vars_from_file "${_source_paths[1]}"
+
+	local uid=$UID
+	local gid=$(id -g)
+	local user=$USER
+
+	local exposed_ports=""
+	local space=false
+
+	local p
+	for p in $ports ; do
+		if [[ "$p" == *:* ]] ; then
+			[[ $space == true ]] && exposed_ports+=" "
+			exposed_ports+="${p/*:/}"
+			space=true
+		fi
+	done
+
+	local exposed_volumes=""
+	local comma=false
+
+	local v
+	for v in $volumes ; do
+		if [[ "$v" == *:* ]] ; then
+			[[ $comma == true ]] && exposed_volumes+=", "
+			exposed_volumes+=\"${v/*:/}\"
+			comma=true
+		fi
+	done
+
+	sed -e "s/\$USER/$user/g;s/\$UID/$uid/g;s/\$GID/$gid/g;s/\$PORTS/$exposed_ports/g;s&\$VOLUMES&$exposed_volumes&g"
+
+}
+
+function is_running()
+{
+
+	local image container
+
+}
+
+function is_linux_running()
+{
+
+	get_target_path $1
+	get_source_paths $1
+	load_vars_from_file "${_source_paths[0]}"
+
+	local container="$(docker ps -q -f name=$USER/$image)"
+
+	if [[ "$container" != "" ]] ; then
+		echo true > "$_target_path"
+	else
+		echo false > "$_target_path"
+	fi
+
+}
+
+function attach_to_container()
+{
+
+	get_source_paths $1
+
+	local process_args_path="${_source_paths[0]}"
+	load_vars_from_file "$process_args_path"
+
+	local linux_is_running
+	read linux_is_running < "$timestamps_dir/last_check_for_running_linux"
+
+	if [[ "$linux_is_running" != true ]] ; then
+		$native_pty docker run $interactive $name $security $caps $devices $user \
+			$volumes $ports $USER/$image $bash_cmd "${shell_cmd[@]}"
+	else
+		$native_pty docker exec $interactive $user $USER/$image $bash_cmd "${shell_cmd[@]}"
+	fi
+
+}
+
+function save_vars_if_different()
+{
+
+	local target_path="$1"
+	shift
+
+	save_vars $@
+	local candidate_path="$_target_path"
+
+	calculate_md5sum "$candidate_path"
+	local candidate_sum=$_md5sum
+
+	local target_sum=""
+	if [[ -e "$target_path" ]] ; then
+		calculate_md5sum "$target_sum"
+		target_sum=$_md5sum
+	fi
+
+	if [[ "$candidate_sum" != "$target_sum" ]] ; then
+		mv "$candidate_path" "$target_path"
+	fi
+
+}
+
+function make_params()
+{
+
+	get_target_path $1
+	get_source_paths $1
+
+	local params_path="$_target_path"
+
+	local process_args_path="${_source_paths[0]}"
+	source "$process_args_path"
+
+	local image="${process_args[0]}"
+	local host_root="${process_args[1]}"
+	process_args=("${process_args[@]:2}")
+
+	# Process the relevant options
+	local force_option=false
+	local verbose_option=false
+	while [[ ${#process_args[@]} -gt 0 && "${process_args[0]}" == --* ]] ; do
+		if [[ "${process_args[0]}" == --force ]] ; then
+			force_option=true
+		elif [[ "${process_args[0]}" == --verbose ]] ; then
+			verbose_option=true
+		fi
+		process_args=("${process_args[@]:1}")
+	done
+
+	# The remaining process args should be passed to bash as the command to run
+	declare -a shell_args=("${process_args[@]}")
+
+	local security="--security-opt seccomp:unconfined --privileged"
+	local caps="--cap-add SYS_ADMIN"
+	local ports="--publish 22:22"
+	local devices="--volume /dev/bus/usb:/dev/bus/usb"
+	local user="--user ddt"
+	local volumes="--volume $host_root:/host"
+	local name="--name $USER/$image"
+	local interactive="--tty --interactive"
+	local bash_cmd="/bin/bash"
+
+	save_vars_to_file "$params_path" image host_root security caps ports devices user volumes name interactive bash_cmd \
+		force_option verbose_option shell_args
+
+}
+
+function start_image()
+{
+
+	last_successful_process_args_path="$variables_dir/last_successful_args"
+	process_args_path="$variables_dir/process_args.$$"
+	declare -a process_args=("$@")
+	declare -p process_args > "$process_args_path"
+
+	local params_path="$variables_dir/params"
+	set_dependencies --different make_params: "$params_path" "$process_args_path"
+	generate_index $_target_index $_target_index
+
+	source "$params_path"
+
+	if [[ $verbose_option == true ]] ; then
+		set_verbose true
+	fi
+
+	set_dependencies make_dockerfile: "$script_dir/Dockerfile-$image" "$script_dir/Dockerfile.in" "$params_path"
+	set_dependencies build_docker_image: "$timestamps_dir/last_successful_build" "$script_dir/Dockerfile-$image"
+	local dockerfile_index="$_target_index"
+
+	set_dependencies is_linux_running: "$timestamps_dir/last_check_for_running_linux" "$params_path"
+	local is_running_index="$_target_index"
+
+	set_dependencies attach_to_container: "$timestamps_dir/last_attached" "$params_path" \
+		"$timestamps_dir/last_check_for_running_linux" "$timestamps_dir/last_successful_build"
+	local last_attached_index="$_target_index"
+
+	declare -i comparison_index=$last_attached_index
+	if [[ $force_option == true ]] ; then
+		comparison_index=-1
+	fi
+
+	if generate_index $last_attached_index $comparison_index ; then
+		mv "$process_args_path" "$last_successful_process_args_path"
+		return 0
+	fi
+
+	return 1
+
+}
+
+timestamps_dir="$script_dir/.timestamps"
+variables_dir="$script_dir/.variables"
+
+[[ ! -d "$timestamps_dir" ]] && mkdir "$timestamps_dir"
+[[ ! -d "$variables_dir" ]] && mkdir "$variables_dir"
+
+if [[ -z ${PREVENT_LINUX_EXECUTION+x} ]] ; then
+
+	start_image linux "$(native_path /)" "$@"
+
+fi
+
+LINUX_LOADED=true
+

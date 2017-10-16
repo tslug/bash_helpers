@@ -1,0 +1,14 @@
+FROM ubuntu:yakkety
+
+RUN apt-get update \
+	&& apt-get -y install openssl
+
+RUN useradd --uid $UID -ms /bin/bash $USER
+
+USER $USER
+
+CMD /bin/bash
+
+EXPOSE $PORTS
+VOLUME [$VOLUMES]
+

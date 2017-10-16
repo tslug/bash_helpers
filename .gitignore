@@ -1,0 +1,4 @@
+.*.swp
+.variables
+.timestamps
+Dockerfile-*
