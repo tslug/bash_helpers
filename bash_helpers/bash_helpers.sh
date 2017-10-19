@@ -101,7 +101,7 @@ function calculate_md5sum()
 	local source="$1"
 
 	if [[ "$OS" == Darwin ]] ; then
-		md5sum_cmd=md5
+		md5sum_cmd="md5 -q"
 		if [[ "$source" == "-" ]] ; then
 			source=""
 		fi
@@ -256,7 +256,7 @@ function visit_tree_leaves()
 
 	shift 3
 
-	if [[ "${dependencies[$top_node_index]}" == "" ]] ; then
+	if [[ "${dependencies_targets[$top_node_index]}" == "" ]] ; then
 		${visit_function_name/:/} $top_node_index $depth "$@"
 	else
 		for dep_index in ${dependencies[$top_node_index]} ; do

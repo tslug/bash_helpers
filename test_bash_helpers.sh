@@ -17,7 +17,7 @@ function make_output()
 
 	verbose_log $depth Calculating checksum and converting input file ${_source_paths[0]##*/} to ${_target_path##*/}...
 	calculate_md5sum "${_source_paths[0]}"
-	echo "$_md5sum: " | cat - "${_source_paths[0]}" | sed -s s/cat/dog/g > "$_target_path"
+	echo "$_md5sum: " | cat - "${_source_paths[0]}" | sed -e s/cat/dog/g > "$_target_path"
 }
 
 function make_input()
@@ -68,8 +68,8 @@ function create_node_and_children()
 	local top_dir="$3"
 	declare -i max_children=$4
 
-	filename="$top_dir/node${#target_indicies[@]}_d$depth"
-	add_target_to_indicies "$filename"
+	filename="$top_dir/node${#dependencies_targets[@]}_d$depth"
+	add_target_to_indices "$filename"
 	local target_index=$_target_index
 	target_indexes+=$_target_index
 
@@ -80,15 +80,16 @@ function create_node_and_children()
 
 	if [[ $num_children -gt 0 ]] ; then
 
-		declare -a children_indicies=()
+		declare -a children_indices=()
+		declare -i child=0
 
 		while [[ $child -lt $num_children ]] ; do
 			create_node_and_children $(($depth+1)) $max_depth "$top_dir" $max_children
-			children_indicies+=$_target_index
+			children_indices+=$_target_index
 			child=$(($child+1))
 		done
 
-		set_dependencies --indicies create_file: $target_index ${children_indicies[@]}
+		set_dependencies --indices create_file: $target_index ${children_indices[@]}
 
 	fi
 
@@ -98,9 +99,24 @@ function create_node_and_children()
 
 function create_leaf
 {
+
 	get_target_path $1
 	declare -i depth=$2
-	echo $(( ($RANDOM % 40) / ($depth + 1) )) > "$_target_path"
+
+	local dirty=true
+	declare -i value=$(( ($RANDOM % 40) / ($depth + 1) ))
+	if [[ -e "$_target_path" ]] ; then
+		declare -i previous
+		read previous < "$_target_path"
+		if [[ $previous -eq $value ]] ; then
+			dirty=false
+		fi
+	fi
+
+	if [[ $dirty == true ]] ; then
+		echo  "$_target_path"
+	fi
+
 }
 
 function create_dependency_tree()
@@ -112,6 +128,8 @@ function create_dependency_tree()
 
 	create_node_and_children 0 $max_depth "$top_dir" "$max_children"
 	declare -i final_output_index=$_target_index
+
+	visit_tree_leaves $final_output_index 0 create_leaf:
 
 	_target_index=$final_output_index
 
@@ -131,7 +149,6 @@ function new_args()
 	get_source_paths $1
 
 	cp "${_source_paths[0]}" "$_target_path"
-	create_dependency_tree "$_target_path"
 
 }
 
@@ -164,6 +181,8 @@ if get_arg 1 "$@" ; then
 		test_output_target_index=$_target_index
 
 	elif [[ "$_arg" == "order" ]] ; then
+
+		set -x
 
 		# These are the primary input parameters that drive
 		#   the output of the test, but for any given set, the
@@ -218,12 +237,8 @@ if get_arg 1 "$@" ; then
 
 		# We now set the random number seed, which will change how the tree is built
 
-		set -x
-
 		create_dependency_tree "$tree_args_path"
 		test_output_target_index=$_target_index
-
-		set_dependencies create_dependency_tree: 
 
 	else
 		usage
