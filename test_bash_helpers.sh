@@ -71,7 +71,6 @@ function create_node_and_children()
 	filename="$top_dir/node${#dependencies_targets[@]}_d$depth"
 	add_target_to_indices "$filename"
 	local target_index=$_target_index
-	target_indexes+=$_target_index
 
 	declare -i num_children=0
 	if [[ $depth -lt $max_depth ]] ; then
@@ -85,7 +84,7 @@ function create_node_and_children()
 
 		while [[ $child -lt $num_children ]] ; do
 			create_node_and_children $(($depth+1)) $max_depth "$top_dir" $max_children
-			children_indices+=$_target_index
+			children_indices+=($_target_index)
 			child=$(($child+1))
 		done
 
@@ -110,11 +109,15 @@ function create_leaf
 		read previous < "$_target_path"
 		if [[ $previous -eq $value ]] ; then
 			dirty=false
+		else
+			echo "$value" > "$_target_path"
 		fi
+	else
+		echo "$value" > "$_target_path"
 	fi
 
 	if [[ $dirty == true ]] ; then
-		echo  "$_target_path"
+		verbose_log $depth "Created leaf at $_target_path"
 	fi
 
 }
@@ -126,7 +129,7 @@ function create_dependency_tree()
 
 	RANDOM=$random_seed
 
-	create_node_and_children 0 $max_depth "$top_dir" "$max_children"
+	create_node_and_children 0 $max_depth "$order_test_dir" $max_children
 	declare -i final_output_index=$_target_index
 
 	visit_tree_leaves $final_output_index 0 create_leaf:
@@ -172,7 +175,12 @@ if get_arg 1 "$@" ; then
 
 	top_dir="/tmp/test_bash_helpers"
 
-	if [[ "$_arg" == "simple" ]] ; then
+	if [[ "$_arg" == "clean" ]] ; then
+
+		rm -rf "$top_dir"
+		exit 0
+
+	elif [[ "$_arg" == "simple" ]] ; then
 
 		simple_test_dir="$top_dir/simple"
 		set_up_simple_test  "$simple_test_dir"
@@ -182,8 +190,6 @@ if get_arg 1 "$@" ; then
 
 	elif [[ "$_arg" == "order" ]] ; then
 
-		set -x
-
 		# These are the primary input parameters that drive
 		#   the output of the test, but for any given set, the
 		#   output should always be the same unless it's a parallel
@@ -192,10 +198,7 @@ if get_arg 1 "$@" ; then
 		declare -i max_depth=5
 		declare -i max_children=5
 		order_top_dir="$top_dir/order"
-		order_test_dir="$order_top_dir/order-md${max_depth}-mc${max_children}-r${random_seed}"
-
 		cmd_args_path="$order_top_dir/cmd_args"
-		last_successful_cmd_args_path="$order_top_dir/last_successful_cmd_args"
 
 		# Command line args from last run overrides defaults
 		if [[ -f "$cmd_args_path" ]] ; then
@@ -216,10 +219,12 @@ if get_arg 1 "$@" ; then
 			fi
 		fi
 
+		order_test_dir="$order_top_dir/order-md${max_depth}-mc${max_children}-r${random_seed}"
+		last_successful_cmd_args_path="$order_top_dir/last_successful_cmd_args"
 		tree_args_path="$order_test_dir/tree_args"
 
 		# Save off the parameters we want as the command line args
-		save_vars_to_file "$cmd_args_path" random_seed max_depth max_children
+		save_vars_to_file "$cmd_args_path" random_seed max_depth max_children order_test_dir
 
 		# The random seed file is depenedent on the command line arguments changing
 		#   We actually have to generate this file before specifying the rest of the

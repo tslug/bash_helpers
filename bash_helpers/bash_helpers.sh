@@ -256,7 +256,7 @@ function visit_tree_leaves()
 
 	shift 3
 
-	if [[ "${dependencies_targets[$top_node_index]}" == "" ]] ; then
+	if [[ "${dependencies[$top_node_index]}" == "" ]] ; then
 		${visit_function_name/:/} $top_node_index $depth "$@"
 	else
 		for dep_index in ${dependencies[$top_node_index]} ; do
@@ -473,15 +473,15 @@ function generate_index_newer_than()
 
 	local deps="${dependencies[$target_index]}"
 
-	declare -a target_deps_msg="target ${target_path##*/} depends on "
+	declare -a target_deps_msg="target ${target_path##*/} depends on"
 
 	if [[ ${#deps} -gt 0 ]] ; then
 		local source_index
 		for source_index in ${dependencies[$target_index]} ; do
-			target_deps_msg+="${dependencies_targets[$source_index]##*/}"
+			target_deps_msg+=(${dependencies_targets[$source_index]##*/})
 		done
 	else
-		target_deps_msg+="nothing!"
+		target_deps_msg+=("nothing!")
 	fi
 
 	verbose_log $depth "${target_deps_msg[@]}"
