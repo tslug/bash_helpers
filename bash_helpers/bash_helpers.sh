@@ -131,7 +131,7 @@ fi
 function save_vars_to_file()
 {
 	declare -i i=2
-	mkdir -p "${1%/*}"
+	mkdir_if_missing "$1"
 	while [[ $i -le $# ]] ; do
 		eval declare -p \$${i}
 		i=$(($i+1))
@@ -434,7 +434,10 @@ function is_target_newer_than()
 
 function create_variables_dir()
 {
-	mkdir -p "$script_dir/.variables"
+	local dir="$script_dir/.variables"
+	if [[ ! -e "$dir" ]] ; then
+		mkdir -p "$dir"
+	fi
 }
 
 function generate_target()
@@ -450,8 +453,17 @@ function generate_target()
 
 }
 
+function mkdir_if_missing()
+{
+	local dir="${1%/*}"
+	if [[ ! -e "$dir" ]] ; then
+		mkdir -p "$dir"
+	fi
+}
+
 function generate_index()
 {
+
 	create_variables_dir
 	local comparison=$1
 	if [[ $# -ge 2 ]] ; then
@@ -529,7 +541,7 @@ function generate_index_newer_than()
 
 			verbose_log $depth "${target_path##*/} dirty, running $function_wrapper $function_name ${target_path##*/}..."
 
-			mkdir -p "${target_path%/*}"
+			mkdir_if_missing "$target_path"
 			if $function_wrapper "$function_name" $target_index $depth ; then
 				touch "$target_path"
 				verbose_log $depth "$function_name successfully built ${target_path##*/}"

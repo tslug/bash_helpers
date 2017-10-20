@@ -6,8 +6,12 @@ set -u
 script_dir="${BASH_SOURCE%/*}"
 
 if [[ -z ${BASH_HELPERS_LOADED+x} && -f "$script_dir/bash_helpers/bash_helpers.sh" ]] ; then
+	echo -n "Loading bash_helpers... "
         source "$script_dir/bash_helpers/bash_helpers.sh"
+	echo 'done!'
 fi
+
+echo -n "Defining functions... "
 
 function make_output()
 {
@@ -155,6 +159,9 @@ function new_args()
 
 }
 
+echo 'done!'
+echo -n 'Reading command-line args... '
+
 if arg_is_set --help "$@" ; then
 	usage
 	exit 1
@@ -169,11 +176,15 @@ if arg_is_set --rebuild-all "$@" ; then
 	rebuild_all=true
 fi
 
+echo 'done!'
+
+echo -n "Creating dependencies... "
+
 declare -i test_output_target_index=-1
 
 if get_arg 1 "$@" ; then
 
-	top_dir="/tmp/test_bash_helpers"
+	top_dir="/tmp/ramdisk/test_bash_helpers"
 
 	if [[ "$_arg" == "clean" ]] ; then
 
@@ -257,12 +268,16 @@ else
 
 fi
 
+echo 'done!'
+echo -n Generating...
+
 declare -i comparison_index=$test_output_target_index
 if [[ $rebuild_all == true ]]  ; then
 	comparison_index=-1
 fi
 
 generate_index $test_output_target_index $comparison_index
+echo 'done!'
 
 get_target_path $test_output_target_index
 cat "$_target_path"
