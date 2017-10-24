@@ -1,7 +1,11 @@
 FROM ubuntu:yakkety
 
-RUN apt-get update \
-	&& apt-get -y install openssl
+RUN noint="DEBIAN_FRONTEND=noninteractive" \
+	&& norec="--no-install-recommends" \
+	&& apt-get update \
+	&& $noint apt-get install -y $norec openssl curl ca-certificates \
+	&& curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
+	&& $noint apt-get install -y $norec git-lfs
 
 RUN useradd --uid $UID -ms /bin/bash $USER
 

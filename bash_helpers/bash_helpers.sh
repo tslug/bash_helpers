@@ -2,6 +2,8 @@
 
 bash_script_dir="${BASH_SOURCE%/*}"
 
+shopt -s expand_aliases
+
 OS="$(uname -s)"
 VERBOSE=false
 
@@ -133,7 +135,7 @@ function save_vars_to_file()
 	declare -i i=2
 	mkdir_if_missing "$1"
 	while [[ $i -le $# ]] ; do
-		eval declare -p \$${i}
+		eval declare -p \${${i}}
 		i=$(($i+1))
 	done > "$1"
 }
@@ -141,10 +143,7 @@ function save_vars_to_file()
 # load_vars <save_file>
 #   This will load all the variables in the specified save file
 
-function load_vars_from_file()
-{
-	source "$1"
-}
+alias load_vars_from_file=source
 
 function save_vars()
 {
@@ -240,11 +239,20 @@ function copy_dependency_index()
 	local src=$1
 	local dest=$2
 
-	dependencies[$dest]="$dependencies[$src]"
-	dependencies_targets[$dest]="$dependencies_targets[$src]"
-	dependencies_function_names[$dest]="$dependencies_function_names[$src]"
-	dependencies_function_wrappers[$dest]="$dependencies_function_wrappers[$src]"
+	dependencies[$dest]="${dependencies[$src]}"
+	dependencies_targets[$dest]="${dependencies_targets[$src]}"
+	dependencies_function_names[$dest]="${dependencies_function_names[$src]}"
+	dependencies_function_wrappers[$dest]="${dependencies_function_wrappers[$src]}"
 
+}
+
+function dump_dependencies()
+{
+	local src=$1
+	echo target=${dependencies_targets[$src]}
+	echo deps=${dependencies[$src]}
+	echo fn=${dependencies_function_names[$src]}
+	echo wrapper=${dependencies_function_wrappers[$src]}
 }
 
 function visit_tree_leaves()
@@ -305,11 +313,11 @@ function update_target_if_different()
 		#   whether it's different than the original.  If not, we pretend
 		#   the file has not been built
 
-		if ${function_name/:/} 0 ; then
+		if ${function_name/:/} 0 $depth ; then
 			calculate_md5sum "$temp_target_path"
 			local temp_target_md5="$_md5sum"
 			if [[ "$temp_target_md5" != "$previous_target_md5" ]] ; then
-				verbose_log $previous_target_md5 is different
+				verbose_log $depth $previous_target_md5 is different
 				mv "$temp_target_path" "$target_path"
 				return 0
 			fi
