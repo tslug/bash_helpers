@@ -1,17 +1,33 @@
-FROM ubuntu:yakkety
+FROM debian:stable
 
 RUN noint="DEBIAN_FRONTEND=noninteractive" \
-	&& norec="--no-install-recommends" \
-	&& apt-get update \
-	&& $noint apt-get install -y $norec openssl curl ca-certificates \
+	norec="--no-install-recommends" \
+	apt-get update \
+	&& $noint apt-get install -y $norec openssl curl ca-certificates vim sudo \
 	&& curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
-	&& $noint apt-get install -y $norec git-lfs
+	&& $noint apt-get install -y $norec --allow-unauthenticated git-lfs
 
-RUN useradd --uid $UID -ms /bin/bash $USER
+RUN for gid in $GROUPS ; do addgroup --system --gid $gid group$gid ; done
+
+# RUN grouplist="$GROUPS" \
+# 	useradd --uid $UID --gid $GID -G "$(echo ${grouplist// /,})" -M -b /host/home -s /bin/bash $USER
+RUN grouplist="$GROUPS" \
+	useradd --uid $UID --gid $GID -p "" -M -b /host/home -s /bin/bash $USER \
+	&& usermod -a -G "$(echo ${grouplist// /,})" $USER
+
+COPY wait.sh /
+RUN chmod 755 /wait.sh
+
+RUN echo "$USER ALL=(ALL:ALL) ALL" >> /etc/sudoers
+
+RUN mkdir /host && chown $UID:$GID /host
 
 USER $USER
 
-CMD /bin/bash
+# COPY bashrc /home/$USER/.bashrc
+# RUN chmod 755 /home/$USER/.bashrc
+
+CMD /wait.sh
 
 EXPOSE $PORTS
 VOLUME [$VOLUMES]

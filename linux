@@ -30,7 +30,16 @@ function build_docker_image()
 	local image="${dockerfile_path##*Dockerfile-}"
 	local dockerfile="${dockerfile_path##*/}"
 
-	docker build --file "$dockerfile" --tag "$image" "$script_dir"
+	echoerr -n "Building container... "
+
+	if docker build --file "$dockerfile" --tag "$USER/$image" \
+		"$script_dir" > /tmp/docker_build 2>&1 ; then
+		echoerr 'done!'
+		return 0
+	else
+		echoerr 'failed!  Log in /tmp/docker_build'
+		return 1
+	fi
 
 }
 
@@ -41,6 +50,7 @@ function filter_dockerfile()
 
 	local uid=$UID
 	local gid=$(id -g)
+	local groups="$(id -G)"
 	local user=$USER
 
 	local exposed_ports=""
@@ -67,7 +77,7 @@ function filter_dockerfile()
 		fi
 	done
 
-	sed -e "s/\$USER/$user/g;s/\$UID/$uid/g;s/\$GID/$gid/g;s/\$PORTS/$exposed_ports/g;s&\$VOLUMES&$exposed_volumes&g"
+	sed -e "s/\$USER/$user/g;s/\$UID/$uid/g;s/\$GROUPS/$groups/;s/\$GID/$gid/g;s/\$PORTS/$exposed_ports/g;s&\$VOLUMES&$exposed_volumes&g"
 
 }
 
@@ -99,6 +109,7 @@ function attach_to_container()
 {
 
 	get_source_paths $1
+	declare -i depth=$2
 
 	local start_image_args_path="${_source_paths[0]}"
 	load_vars_from_file "$start_image_args_path"
@@ -107,9 +118,15 @@ function attach_to_container()
 	read linux_is_running < "$script_dir/.timestamps/last_check_for_running_linux"
 
 	if [[ "$linux_is_running" != true ]] ; then
+		docker rm $image > /dev/null 2>&1 || :
+		cmd="$native_pty docker run $interactive $name $security $caps $devices $user \
+			$volumes $ports $groups $USER/$image $bash_cmd ${shell_cmd[@]}"
+		verbose_log $depth Running $cmd
 		$native_pty docker run $interactive $name $security $caps $devices $user \
-			$volumes $ports $USER/$image $bash_cmd "${shell_cmd[@]}"
+			$volumes $ports $groups $USER/$image $bash_cmd "${shell_cmd[@]}"
 	else
+		cmd="$native_pty docker exec $interactive $user $USER/$image $bash_cmd ${shell_cmd[@]}"
+		verbose_log $depth Running $cmd
 		$native_pty docker exec $interactive $user $USER/$image $bash_cmd "${shell_cmd[@]}"
 	fi
 
@@ -152,14 +169,21 @@ function make_params()
 	local caps="--cap-add SYS_ADMIN"
 	local ports="--publish 22:22"
 	local devices="--volume /dev/bus/usb:/dev/bus/usb"
-	local user="--user ddt"
+	local user="--user $USER"
 	local volumes="--volume $host_root:/host"
-	local name="--name $USER/$image"
+	local name="--name $image"
 	local interactive="--tty --interactive"
 	local bash_cmd="/bin/bash"
 
-	save_vars_to_file "$params_path" image host_root security caps ports devices user volumes name interactive bash_cmd \
-		force_option verbose_option shell_args
+	local grouplist="$(id -G)"
+	local groups=""
+	local g
+	for g in $grouplist ; do
+		local groups="$groups --group-add $g"
+	done
+
+	save_vars_to_file "$params_path" image host_root security caps ports devices user volumes name \
+		interactive bash_cmd force_option verbose_option shell_args groups
 
 }
 
@@ -172,7 +196,7 @@ function start_image()
 	declare -p start_image_args > "$start_image_args_path"
 
 	local params_path="$script_dir/.variables/params"
-	set_dependencies --different make_params: "$params_path" "$start_image_args_path"
+	set_dependencies --different make_params: "$params_path" "$start_image_args_path" "$BASH_SOURCE"
 	generate_index $_target_index
 
 	load_vars_from_file "$params_path"
@@ -181,7 +205,9 @@ function start_image()
 		set_verbose true
 	fi
 
-	set_dependencies make_dockerfile: "$script_dir/Dockerfile-$image" "$script_dir/Dockerfile.in" "$params_path"
+	set_dependencies make_dockerfile: "$script_dir/Dockerfile-$image" \
+		"$script_dir/Dockerfile.in" "$params_path" "$BASH_SOURCE"
+
 	set_dependencies build_docker_image: "$script_dir/.timestamps/last_successful_build" "$script_dir/Dockerfile-$image"
 	local dockerfile_index="$_target_index"
 
