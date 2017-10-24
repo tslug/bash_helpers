@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright Dave Taylor, 2017.  All Rights Reserved.
+
 bash_script_dir="${BASH_SOURCE%/*}"
 
 shopt -s expand_aliases

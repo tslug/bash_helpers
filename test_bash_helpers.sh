@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright Dave Taylor, 2017.  All Rights Reserved.
+
 set -e
 set -u
 
