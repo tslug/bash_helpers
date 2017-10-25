@@ -120,14 +120,17 @@ function attach_to_container()
 	if [[ "$linux_is_running" != true ]] ; then
 		docker rm $image > /dev/null 2>&1 || :
 		cmd="$native_pty docker run $interactive $name $security $caps $devices $user \
-			$volumes $ports $groups $USER/$image $bash_cmd ${shell_cmd[@]}"
-		verbose_log $depth Running $cmd
-		$native_pty docker run $interactive $name $security $caps $devices $user \
-			$volumes $ports $groups $USER/$image $bash_cmd "${shell_cmd[@]}"
+			$volumes $ports $groups $USER/$image $bash_cmd"
 	else
-		cmd="$native_pty docker exec $interactive $user $USER/$image $bash_cmd ${shell_cmd[@]}"
+		cmd="$native_pty docker exec $interactive $user $USER/$image $bash_cmd"
+	fi
+
+	if [[ ${#shell_args[@]} -gt 0 ]] ; then
+		verbose_log $depth Running $cmd "${shell_args[@]}"
+		$cmd "${shell_args[@]}"
+	else
 		verbose_log $depth Running $cmd
-		$native_pty docker exec $interactive $user $USER/$image $bash_cmd "${shell_cmd[@]}"
+		$cmd
 	fi
 
 }
@@ -144,7 +147,7 @@ function make_params()
 	load_vars_from_file "$start_image_args_path"
 
 	local image="${start_image_args[0]}"
-	local host_root="${start_image_args[1]}"
+	local user_root="${start_image_args[1]}"
 	start_image_args=("${start_image_args[@]:2}")
 
 	# Process the relevant options
@@ -167,10 +170,14 @@ function make_params()
 
 	local security="--security-opt seccomp:unconfined --privileged"
 	local caps="--cap-add SYS_ADMIN"
-	local ports="--publish 22:22"
-	local devices="--volume /dev/bus/usb:/dev/bus/usb"
+
+	local ports="--publish 2222:22"
+
+	# local devices="--volume /dev/bus/usb:/dev/bus/usb"
+	local devices=""
+
 	local user="--user $USER"
-	local volumes="--volume $host_root:/host"
+	local volumes="--volume $user_root:/home/$USER"
 	local name="--name $image"
 	local interactive="--tty --interactive"
 	local bash_cmd="/bin/bash"
@@ -182,7 +189,7 @@ function make_params()
 		local groups="$groups --group-add $g"
 	done
 
-	save_vars_to_file "$params_path" image host_root security caps ports devices user volumes name \
+	save_vars_to_file "$params_path" image security caps ports devices user volumes name \
 		interactive bash_cmd force_option verbose_option shell_args groups
 
 }
@@ -234,7 +241,7 @@ function start_image()
 
 if [[ -z ${PREVENT_LINUX_EXECUTION+x} ]] ; then
 
-	start_image linux "$(native_path /)" "$@"
+	start_image linux "$(native_path ~)" "$@"
 
 fi
 
