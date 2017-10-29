@@ -1,19 +1,17 @@
 #!/bin/bash
 
-# Copyright Dave Taylor, 2017.  All Rights Reserved.
+# Copyright Dave Taylor, 2017.
 
 set -e
 set -u
 
 script_dir="${BASH_SOURCE%/*}"
 
-if [[ -z ${BASH_HELPERS_LOADED+x} && -f "$script_dir/bash_helpers/bash_helpers.sh" ]] ; then
-	echo -n "Loading bash_helpers... "
-        source "$script_dir/bash_helpers/bash_helpers.sh"
-	echo 'done!'
+if [[ -z ${BASH_HELPERS_LOADED+x} && -f "$script_dir/bash_helpers.sh" ]] ; then
+	echo -n "Loading bash_helpers... " 1>&2
+        source "$script_dir/bash_helpers.sh"
+	echoerr 'done!'
 fi
-
-echo -n "Defining functions... "
 
 function make_output()
 {
@@ -36,7 +34,7 @@ function make_input()
 
 function usage()
 {
-	echo "$0 [ --verbose ] [ --rebuild-all] < simple | order >"
+	echoerr "$0 [ --verbose ] [ --rebuild-all] < simple | order >"
 }
 
 function set_up_simple_test()
@@ -161,8 +159,8 @@ function new_args()
 
 }
 
-echo 'done!'
-echo -n 'Reading command-line args... '
+echoerr 'done!'
+echoerr -n 'Reading command-line args... '
 
 if arg_is_set --help "$@" ; then
 	usage
@@ -178,15 +176,15 @@ if arg_is_set --rebuild-all "$@" ; then
 	rebuild_all=true
 fi
 
-echo 'done!'
+echoerr 'done!'
 
-echo -n "Creating dependencies... "
+echoerr -n "Creating dependencies... "
 
 declare -i test_output_target_index=-1
 
 if get_arg 1 "$@" ; then
 
-	top_dir="/tmp/ramdisk/test_bash_helpers"
+	top_dir="/tmp/test_bash_helpers"
 
 	if [[ "$_arg" == "clean" ]] ; then
 
@@ -259,19 +257,25 @@ if get_arg 1 "$@" ; then
 		test_output_target_index=$_target_index
 
 	else
+
+		echoerr 'failed!'
+		echoerr "Do not recognize command [$_arg]"
 		usage
 		exit 1
+
 	fi
 
 else
 
+	echoerr 'failed!'
+	echoerr 'Too few arguments'
 	usage
 	exit 1
 
 fi
 
-echo 'done!'
-echo -n Generating...
+echoerr 'done!'
+echoerr -n Generating...
 
 declare -i comparison_index=$test_output_target_index
 if [[ $rebuild_all == true ]]  ; then
@@ -279,7 +283,7 @@ if [[ $rebuild_all == true ]]  ; then
 fi
 
 generate_index $test_output_target_index $comparison_index
-echo 'done!'
+echoerr 'done!'
 
 get_target_path $test_output_target_index
 cat "$_target_path"

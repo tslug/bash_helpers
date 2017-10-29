@@ -7,8 +7,8 @@ set -u
 
 script_dir="${BASH_SOURCE%/*}"
 
-if [[ -z "${BASH_HELPERS_LOADED+x}" && -f "$script_dir/bash_helpers/bash_helpers.sh" ]] ; then
-	source "$script_dir/bash_helpers/bash_helpers.sh"
+if [[ -z "${BASH_HELPERS_LOADED+x}" && -f "$script_dir/../bash_helpers.sh" ]] ; then
+	source "$script_dir/../bash_helpers.sh"
 fi
 
 function make_dockerfile()
@@ -50,7 +50,6 @@ function filter_dockerfile()
 
 	local uid=$UID
 	local gid=$(id -g)
-	local groups="$(id -G)"
 	local user=$USER
 
 	local exposed_ports=""
@@ -77,7 +76,7 @@ function filter_dockerfile()
 		fi
 	done
 
-	sed -e "s/\$USER/$user/g;s/\$UID/$uid/g;s/\$GROUPS/$groups/;s/\$GID/$gid/g;s/\$PORTS/$exposed_ports/g;s&\$VOLUMES&$exposed_volumes&g"
+	sed -e "s/\$USER/$user/g;s/\$UID/$uid/g;s/\$GID/$gid/g;s/\$PORTS/$exposed_ports/g;s&\$VOLUMES&$exposed_volumes&g"
 
 }
 
@@ -119,10 +118,10 @@ function attach_to_container()
 
 	if [[ "$linux_is_running" != true ]] ; then
 		docker rm $image > /dev/null 2>&1 || :
-		cmd="$native_pty docker run $interactive $name $security $caps $devices $user \
-			$volumes $ports $groups $USER/$image $bash_cmd"
+		cmd="$native_pty docker run $interactive $name $security $caps $devices $user_group \
+			$volumes $ports $USER/$image $bash_cmd"
 	else
-		cmd="$native_pty docker exec $interactive $user $USER/$image $bash_cmd"
+		cmd="$native_pty docker exec $interactive $user_group $USER/$image $bash_cmd"
 	fi
 
 	if [[ ${#shell_args[@]} -gt 0 ]] ; then
@@ -170,27 +169,22 @@ function make_params()
 
 	local security="--security-opt seccomp:unconfined --privileged"
 	local caps="--cap-add SYS_ADMIN"
+	# local security=""
+	# local caps=""
 
 	local ports="--publish 2222:22"
 
 	# local devices="--volume /dev/bus/usb:/dev/bus/usb"
 	local devices=""
 
-	local user="--user $USER"
+	local user_group="--user $UID:$(id -g)"
 	local volumes="--volume $user_root:/home/$USER"
 	local name="--name $image"
 	local interactive="--tty --interactive"
 	local bash_cmd="/bin/bash"
 
-	local grouplist="$(id -G)"
-	local groups=""
-	local g
-	for g in $grouplist ; do
-		local groups="$groups --group-add $g"
-	done
-
-	save_vars_to_file "$params_path" image security caps ports devices user volumes name \
-		interactive bash_cmd force_option verbose_option shell_args groups
+	save_vars_to_file "$params_path" image security caps ports devices user_group volumes name \
+		interactive bash_cmd force_option verbose_option shell_args
 
 }
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright Dave Taylor, 2017.  All Rights Reserved.
+# Copyright Dave Taylor, 2017.
 
 bash_script_dir="${BASH_SOURCE%/*}"
 
@@ -79,17 +79,17 @@ function get_arg()
 
 	_arg="(no args)"
 
-	declare -i arg_count=-1
+	declare -i last_arg_index=-1
 	declare -i i=0
-	while [[ $i -le $# && $arg_count -lt $arg_number ]] ; do
+	while [[ $i -le $# && $last_arg_index -lt $arg_number ]] ; do
 		eval _arg="\$$i"
 		if [[ "$_arg" != -* ]] ; then
-			arg_count=$(($arg_count+1))
+			last_arg_index=$(($last_arg_index+1))
 		fi
 		i=$(($i+1))
 	done
 
-	test $arg_count -eq $arg_number
+	test $last_arg_index -eq $arg_number
 
 }
 

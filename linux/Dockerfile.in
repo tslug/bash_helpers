@@ -7,13 +7,8 @@ RUN noint="DEBIAN_FRONTEND=noninteractive" \
 	&& curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
 	&& $noint apt-get install -y $norec --allow-unauthenticated git-lfs
 
-RUN for gid in $GROUPS ; do addgroup --system --gid $gid group$gid ; done
-
-# RUN grouplist="$GROUPS" \
-# 	useradd --uid $UID --gid $GID -G "$(echo ${grouplist// /,})" -M -b /host/home -s /bin/bash $USER
-RUN grouplist="$GROUPS" \
-	useradd --uid $UID --gid $GID -p "" -m -b /home -s /bin/bash $USER \
-	&& usermod -a -G "$(echo ${grouplist// /,})" $USER
+RUN groupadd --gid $GID group$GID \
+	&& useradd --uid $UID --gid $GID -p "" -m -b /home -s /bin/bash $USER
 
 COPY wait.sh /
 RUN chmod 755 /wait.sh
