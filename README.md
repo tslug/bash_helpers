@@ -319,13 +319,13 @@ specified message to stderr.
 The depth_from_top parameter is an integer indicating how deep into the dependency
 tree the 
 
-### echoerr [-n] <log message> ...
+### echoerr [-n] <log_message1> [log_message2] ...
 
 This will print the log message to stderr.
 
 The -n parameter will prevent a newline from being printed.
 
-### arg_is_set <arg_number> <arg1> [arg2] ...
+### arg_is_set <arg_number> <arg_pos1> [arg_pos2] ...
 
 This will return 0 (true) if the argument number is set in arguments.  In calculating
 this, it skips any arguments that start with the character -.  So if \$@=
@@ -336,13 +336,13 @@ this, it skips any arguments that start with the character -.  So if \$@=
 
 arg_is_set 1 and arg_is_set 2 will return true, but arg_is_set 3 will be false.
 
-### get_arg_count <arg1> [arg2] ...
+### get_arg_count <arg_pos1> [arg_pos2] ...
 
 This counts the number of arguments passed.
 
 Like arg_is_set, this will skip any elements that start with -.
 
-### get_arg <arg_number> <arg1> [arg2] ...
+### get_arg <arg_number> <arg_pos1> [arg_pos2] ...
 
 This returns the specified argument in the variable \$\_arg.  Like arg_is_set and
 get_arg_count, it skips any arguments that start with -.
