@@ -177,7 +177,7 @@ source bash_helpers.sh
 
 ## Function Reference / API
 
-### set_dependencies [--indices] [--different] "<dependency_function>: [arguments] ..." <target_file | target_index> <dependency_file | dependency_index> [dependency_file | dependency_index] ...
+### set_dependencies [--indices] [--different] "<dependency_function>: [arguments] ..." <target_file | target_index> <dependency_file1 | dependency_index1> [dependency_file2 | dependency_index2] ...
 
 This states that the target file (or target file index if --indices is
 passed) depends on the specified dependency files (or dependency file
@@ -238,7 +238,7 @@ This adds a new dependency to a pre-existing dependency created with
 set_dependencies.  This is helpful when you want to change your
 dependencies efficiently.
 
-### dump_dependenciesa <target_index>
+### dump_dependencies <target_index>
 
 This dumps all dependency information stored about the target index.
 
@@ -250,7 +250,7 @@ index, followed by the current depth of the visited node, followed by
 any args specified.
 
 This is helpful for adding dependencies to a dependency tree.  See the
-./test_bash_helpers.sh order command for an example where it adds
+**./test_bash_helpers.sh order** command for an example where it adds
 dependencies to the tree leaves.
 
 ### find_target_index <target_path>
@@ -260,7 +260,7 @@ with the target path.
 
 If no target index is found, it will return 1 (false), otherwise 0 (true).
 
-### declare -a dependencies=("<src_index0> [src_index1] ...")
+### declare -a dependencies=(" <dep_index1> [dep_index2] ...")
 
 This is is the array that stores all the dependency indexes for a target
 in a space-separated string.
@@ -338,22 +338,22 @@ Like arg_is_set, this will skip any elements that start with -.
 This returns the specified argument in the variable \$\_arg.  Like arg_is_set and
 get_arg_count, it skips any arguments that start with -.
 
-### native_path <path>
+### native_path <path_name>
 
 This takes a pathname and puts it on stdout using the native path format,
 which is the same on everything, except for Cygwin, which will put it in
 the drive letter format Windows native programs tend to prefer.
 
-### calculate_md5sum <path>
+### calculate_md5sum <path_name>
 
 This calculates the md5sum of the file at path and puts the result in
 the variable \$\_md5sum.
 
-### save_vars_to_file <path> <variable_name_1> [variable_name_2] ...
+### save_vars_to_file <path_name> <variable_name1> [variable_name2] ...
 
 This saves all the specified variable names to the specified path.
 
-### load_vars_from_file <path>
+### load_vars_from_file <path_name>
 
 This loads all variables stored in the specified path as locals.
 
@@ -374,7 +374,7 @@ variables associated with the process in the .variables directory.
 
 ### BASH_HELPERS_LOADED=true
 
-The BASH_HELPERS_LOADED variable is set to "true" after the bash_helpers.sh
+The \$BASH_HELPERS_LOADED variable is set to "true" after the bash_helpers.sh
 file has been sourced.  This can be helpful in preventing recursive inclusion
 of the bash_helpers.sh file.
 
@@ -420,7 +420,7 @@ Functional programming takes some getting used to.  Some tips to stay safe:
 * Do not assume dependencies will be satisfied in the order presented.
 
 Writing your code this way will also prepare your code for parallel
-generation support, which will come for free free if you are rigorous
+generation support, which will come for free if you are rigorous
 about preventing side-effects in your set_dependencies function.
 
 Maintaining these disciplines will also dramatically reduce your bugs in
@@ -443,7 +443,7 @@ other options will create a new process.
 ## Performance Tips
 
 Bash Helpers has been designed to rely on bash internals and to avoid
-forking new processes, in order to maximize speed on embedded systems,
+forking new processes, in order to maximize speed on embedded systems
 and Cygwin, which does not support copy-on-write forks.
 
 In general, you want to set as many dependencies as you can up front,
