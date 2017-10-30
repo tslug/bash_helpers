@@ -251,11 +251,11 @@ dependencies efficiently.
 
 This dumps all dependency information stored about the target index.
 
-### visit_tree_leaves <top_node_index> <depth> <visit_function: [args] ...>
+### visit_tree_leaves <top_node_index> <depth_from_top> <visit_function: [args] ...>
 
 Starting at the target index specified as the top_node_index, this will
 traverse the dependency tree calling the visit_function() with the top node
-index, followed by the current depth of the visited node, followed by
+index, followed by the current depth_from_top of the visited node, followed by
 any args specified.
 
 This is helpful for adding dependencies to a dependency tree.  See the
@@ -311,12 +311,12 @@ generate_index.
 This makes the generate_index function print to stderr status messages
 about the dependencies as they're satified.
 
-### verbose_log <depth> <log message> ...
+### verbose_log <depth_from_top> <log_message1> [log_message2] ...
 
-If set_verbose is set to true, then calling verbose_log will print out the
+If set_verbose is set to true, then calling verbose_log() will print out the
 specified message to stderr.
 
-The depth parameter is an integer indicating how deep into the dependency
+The depth_from_top parameter is an integer indicating how deep into the dependency
 tree the 
 
 ### echoerr [-n] <log message> ...
