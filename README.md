@@ -99,13 +99,16 @@ with any fruit:
 function pick_fruit()
 {
 
+	get_target_path $1
+	local ingredient_path="$_target_path"
+
 	local fruit_type=lemon
 
 	if [[ -f fruit_type ]] ; then
 		read fruit_type < fruit_type
 	fi
 
-	echo $fruit_type > ingredient1
+	echo $fruit_type > $ingredient_path
 
 }
 
@@ -114,13 +117,19 @@ set_dependencies --different pick_fruit: ingredient1 fruit_type
 generate_index $lemonade_index
 ```
 
-This looks for a fruit_type file, and because it doesn't see one, it makes
-the fruit_type lemon.  However, because we specified the "--different"
-flag in set_dependencies, and because "lemon" is no different than
-what was in the ingredient1 file before, when we generate the lemonade
-file again, we can see the ingredient1 file hasn't changed, even though
-it's newer, so it keeps the old lemonade file we had before and doesn't
-regenerate it.
+Because we specified the "--different" flag in set_dependencies, this
+forces pick_fruit to be called and to put the output in a dummy file,
+which is then compared to the original ingredient1 file.  Because we
+haven't created fruit_type, it writes out "lemon" to the dummy file,
+which happens to match exactly what's already in the ingredient1 file,
+so the ingredient1 file is never modified.
+
+Because the ingredient1 file is never modified, it does not trigger
+rebuilding the lemonade file.
+
+Notice that instead of hardcoding the target filename, we fetch it
+using get_target_path.  You must always fetch the target path this way
+in order for --different to work.
 
 Enough lemonade.  Time to shut up and make apple juice:
 
@@ -437,7 +446,7 @@ size linearly with the number of dependencies that are set.  The payload of thes
 entries is a few bytes per dependency file, the target pathname, the generation
 function name, and less than 30 bytes for the rest.
 
-Using the --difference option will spawn an md5sum (md5 on OSX) subprocess.  No
+Using the --different option will spawn an md5sum (md5 on OSX) subprocess.  No
 other options will create a new process.
 
 ## Performance Tips
