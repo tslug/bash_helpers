@@ -158,25 +158,6 @@ function load_vars()
 	load_vars_from_file "$script_dir/.variables/$1.$$"
 }
 
-function is_newer_than_files()
-{
-
-	local dest="$1"
-	shift
-	declare -a srcs=("$@")
-	declare -i i=0
-
-	while [[ $i -lt $# ]] ; do
-		if [[ "${srcs[$i]}" -nt "$dest" ]] ; then
-			return $(($i+1))
-		fi
-		i=$(($i+1))
-	done
-
-	return 0
-
-}
-
 function get_target_path()
 {
 	declare -i target_index=$1
@@ -358,7 +339,7 @@ function set_dependencies()
 	function_wrapper="update_target_if_newer"
 	while [[ "$1" == --* ]] ; do
 		case "$1" in
-			--different)
+			--differen*)
 				function_wrapper="update_target_if_different"
 				;;
 			--index*|--indic*)
@@ -491,7 +472,6 @@ function generate_index_newer_than()
 	local dirty=false
 
 	local target_path="${dependencies_targets[$target_index]}"
-	local comparison_path="${dependencies_targets[$comparison_index]}"
 
 	local deps="${dependencies[$target_index]}"
 
@@ -516,6 +496,7 @@ function generate_index_newer_than()
 		dirty=true
 	elif is_target_newer_than $target_index $comparison_index ; then
 		local first="${target_path##*/}"
+		local comparison_path="${dependencies_targets[$comparison_index]}"
 		local second="${comparison_path##*/}"
 		verbose_log $depth "$first newer than $second"
 		dirty=true
@@ -556,7 +537,7 @@ function generate_index_newer_than()
 				touch "$target_path"
 				verbose_log $depth "$function_name successfully built ${target_path##*/}"
 			else
-				verbose_log $depth "$function_name failed to build ${target_path##*/}"
+				verbose_log $depth "$function_name did not build new ${target_path##*/}"
 			fi
 
 		else
@@ -578,7 +559,7 @@ exit_traps=()
 
 function add_exit_trap()
 {
-	exit_traps+=($1)
+	exit_traps+=(${1/:/})
 }
 
 function at_exit()

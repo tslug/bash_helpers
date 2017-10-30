@@ -241,7 +241,7 @@ if get_arg 1 "$@" ; then
 		#   We actually have to generate this file before specifying the rest of the
 		#   dependencies, because those dependencies depend on the output
 
-		set_dependencies --difference new_args: "$tree_args_path" "$cmd_args_path"
+		set_dependencies --different new_args: "$tree_args_path" "$cmd_args_path"
 		tree_args_index=$_target_index
 
 		declare -i comparison_index=$tree_args_index
