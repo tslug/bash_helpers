@@ -118,7 +118,7 @@ generate_index $lemonade_index
 ```
 
 Because we specified the "--different" flag in set_dependencies, this
-forces pick_fruit to be called and to put the output in a dummy file,
+forces pick_fruit() to be called and to put the output in a dummy file,
 which is then compared to the original ingredient1 file.  Because we
 haven't created fruit_type, it writes out "lemon" to the dummy file,
 which happens to match exactly what's already in the ingredient1 file,
@@ -127,7 +127,7 @@ so the ingredient1 file is never modified.
 Because the ingredient1 file is never modified, it does not trigger
 rebuilding the lemonade file.
 
-Notice that instead of hardcoding the target filename, we fetch it
+Notice that instead of hardcoding the target filename ingredient1, we fetch it
 using get_target_path.  You must always fetch the target path this way
 in order for --different to work.
 
@@ -193,7 +193,7 @@ passed) depends on the specified dependency files (or dependency file
 indices if --indices is passed).
 
 If any of the dependency files are newer than the target file, the
-specified dependency_function will be called in order to generate the
+specified dependency_function() will be called in order to generate the
 target file.  When it is called, it will be passed the index of the
 target in the first argument, followed by the current dependency tree
 depth (integer), followed by any arguments optionally passed.
@@ -251,10 +251,10 @@ dependencies efficiently.
 
 This dumps all dependency information stored about the target index.
 
-### visit_tree_leaves <top_node_index> <depth> <visit_function_name: [args] ...>
+### visit_tree_leaves <top_node_index> <depth> <visit_function: [args] ...>
 
 Starting at the target index specified as the top_node_index, this will
-traverse the dependency tree calling the visit function with the top node
+traverse the dependency tree calling the visit_function() with the top node
 index, followed by the current depth of the visited node, followed by
 any args specified.
 
