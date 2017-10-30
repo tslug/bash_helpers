@@ -177,7 +177,7 @@ source bash_helpers.sh
 
 ## Function Reference / API
 
-# set_dependencies [--indices] [--different] "<dependency_function>: [arguments] ..." <target_file | target_index> <dependency_file | dependency_index> [dependency_file | dependency_index] ...
+### set_dependencies [--indices] [--different] "<dependency_function>: [arguments] ..." <target_file | target_index> <dependency_file | dependency_index> [dependency_file | dependency_index] ...
 
 This states that the target file (or target file index if --indices is
 passed) depends on the specified dependency files (or dependency file
@@ -210,19 +210,19 @@ This will replace any pre-existing dependencies for that target.
 
 Returns the target index as an integer variable in $\_target\_index
 
-# get_target_path <target_index>
+### get_target_path <target_index>
 
 This will return into the variable $\_target\_path the target path
 for the specified target index.  It is for use in functions passed by
 set_dependencies.
 
-# get_source_paths <target_index>
+### get_source_paths <target_index>
 
 This will return into the array $\{\_source\_paths\[@\]\} the paths for
 all the dependency files that the target index depends on.  It is for
 use in functions passed by set_dependencies.
 
-# add_target_to_indices <target_path>
+### add_target_to_indices <target_path>
 
 This adds the target path to the dependencies and returns a target
 index.  This is helpful when building a complex dependency tree
@@ -232,17 +232,17 @@ more performance.
 This still requires set_dependencies to be run on the target index
 to set up a full dependency.
 
-# add_dependency_index <target_index> <dependency_index>
+### add_dependency_index <target_index> <dependency_index>
 
 This adds a new dependency to a pre-existing dependency created with
 set_dependencies.  This is helpful when you want to change your
 dependencies efficiently.
 
-# dump_dependenciesa <target_index>
+### dump_dependenciesa <target_index>
 
 This dumps all dependency information stored about the target index.
 
-# visit_tree_leaves <top_node_index> <depth> <visit_function_name: [args] ...>
+### visit_tree_leaves <top_node_index> <depth> <visit_function_name: [args] ...>
 
 Starting at the target index specified as the top_node_index, this will
 traverse the dependency tree calling the visit function with the top node
@@ -253,35 +253,35 @@ This is helpful for adding dependencies to a dependency tree.  See the
 ./test_bash_helpers.sh order command for an example where it adds
 dependencies to the tree leaves.
 
-# find_target_index <target_path>
+### find_target_index <target_path>
 
 This will return into the variable $\_target\_index the index associated
 with the target path.
 
 If no target index is found, it will return 1 (false), otherwise 0 (true).
 
-# declare -a dependencies=("<src_index0> [src_index1] ...")
+### declare -a dependencies=("<src_index0> [src_index1] ...")
 
 This is is the array that stores all the dependency indexes for a target
 in a space-separated string.
 
-# declare -a dependencies_targets=("<target_name>")
+### declare -a dependencies_targets=("<target_name>")
 
 This is is the array that stores all the target pathnames for each
 target index.
 
-# declare -a dependencies_function_names=("<function_name>")
+### declare -a dependencies_function_names=("<function_name>")
 
 This is the array that stores all the functions used to generate the
 target pathnames for each target index.
 
-# declare -a dependencies_function_wrappers=("[function_wrapper_name]")
+### declare -a dependencies_function_wrappers=("[function_wrapper_name]")
 
 This is is a wrapper used to call the dependency function that generates
 a target, currently used to implement the --different feature of
 set_dependencies.
 
-# generate_index <target_index> [comparison_index]
+### generate_index <target_index> [comparison_index]
 
 This satisfies all the dependencies (see set_dependencies) for the target
 recursively in a depth-first traversal of the dependency tree.
@@ -291,18 +291,18 @@ tree will be compared against that file's modification time.  If the
 comparison index is set to -1, all targets will be regenerated from
 scratch using the set_dependencies functions submitted earlier.
 
-# generate_target <target_path>
+### generate_target <target_path>
 
 This looks up the target index for the specified target path and
 then calls generate_index with it.  It's considerably slower than
 generate_index.
 
-# set_verbose <true | false>
+### set_verbose <true | false>
 
 This makes the generate_index function print to stderr status messages
 about the dependencies as they're satified.
 
-# verbose_log <depth> <log message> ...
+### verbose_log <depth> <log message> ...
 
 If set_verbose is set to true, then calling verbose_log will print out the
 specified message to stderr.
@@ -310,13 +310,13 @@ specified message to stderr.
 The depth parameter is an integer indicating how deep into the dependency
 tree the 
 
-# echoerr [-n] <log message> ...
+### echoerr [-n] <log message> ...
 
 This will print the log message to stderr.
 
 The -n parameter will prevent a newline from being printed.
 
-# arg_is_set <number> <arguments> ...
+### arg_is_set <number> <arguments> ...
 
 This will return 0 (true) if the argument number is set in arguments.  In calculating
 this, it skips any arguments that start with the character -.  So if \$@=
@@ -327,52 +327,52 @@ this, it skips any arguments that start with the character -.  So if \$@=
 
 arg_is_set 1 and arg_is_set 2 will return true, but arg_is_set 3 will be false.
 
-# get_arg_count <arguments> ...
+### get_arg_count <arguments> ...
 
 This counts the number of arguments passed.
 
 Like arg_is_set, this will skip any elements that start with -.
 
-# get_arg <argument_number> <arguments> ...
+### get_arg <argument_number> <arguments> ...
 
 This returns the specified argument in the variable \$\_arg.  Like arg_is_set and
 get_arg_count, it skips any arguments that start with -.
 
-# native_path <path>
+### native_path <path>
 
 This takes a pathname and puts it on stdout using the native path format,
 which is the same on everything, except for Cygwin, which will put it in
 the drive letter format Windows native programs tend to prefer.
 
-# calculate_md5sum <path>
+### calculate_md5sum <path>
 
 This calculates the md5sum of the file at path and puts the result in
 the variable \$\_md5sum.
 
-# save_vars_to_file <path> <variable_name_1> [variable_name_2] ...
+### save_vars_to_file <path> <variable_name_1> [variable_name_2] ...
 
 This saves all the specified variable names to the specified path.
 
-# load_vars_from_file <path>
+### load_vars_from_file <path>
 
 This loads all variables stored in the specified path as locals.
 
-# save_vars <variable_name1> [variable_name2] ...
+### save_vars <variable_name1> [variable_name2] ...
 
 Same as save_vars_to_file, but it stores variables to the .variables directory
 in the script location using a temporary generated filename specific to the process number.
 
-# load_vars
+### load_vars
 
 This loads all variables stored by save_vars in the same process.
 
-# add_exit_trap <function_name:>
+### add_exit_trap <function_name:>
 
 This adds the specified function to the sequence of functions called when the
 bash shell is exiting.  A trap is added by default to clean all temporary
 variables associated with the process in the .variables directory.
 
-# BASH_HELPERS_LOADED=true
+### BASH_HELPERS_LOADED=true
 
 The BASH_HELPERS_LOADED variable is set to "true" after the bash_helpers.sh
 file has been sourced.  This can be helpful in preventing recursive inclusion
