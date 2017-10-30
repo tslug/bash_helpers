@@ -328,13 +328,13 @@ The -n parameter will prevent a newline from being printed.
 ### arg_is_set <arg_number> <arg_pos1> [arg_pos2] ...
 
 This will return 0 (true) if the argument number is set in arguments.  In calculating
-this, it skips any arguments that start with the character -.  So if \$@=
+this, it skips any arguments that start with the character -.  So if you take:
 
 ```
-./lemonade_maker.sh hi --verbose there
+arg_is_set <N> hi --verbose there
 ```
 
-arg_is_set 1 and arg_is_set 2 will return true, but arg_is_set 3 will be false.
+For N=1 and N=2, arg_is_set will be successful, but N=3 or more, arg_is_set will fail.
 
 ### get_arg_count <arg_pos1> [arg_pos2] ...
 
