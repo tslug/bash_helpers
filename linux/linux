@@ -191,6 +191,8 @@ function make_params()
 function start_image()
 {
 
+	mkdir -p "$script_dir/.variables" "$script_dir/.timestamps"
+
 	last_successful_start_image_args_path="$script_dir/.variables/last_successful_args"
 	start_image_args_path="$script_dir/.variables/start_image_args.$$"
 	declare -a start_image_args=("$@")
