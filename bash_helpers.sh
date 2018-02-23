@@ -446,9 +446,11 @@ function generate_target()
 
 function mkdir_if_missing()
 {
-	local dir="${1%/*}"
-	if [[ ! -e "$dir" ]] ; then
-		mkdir -p "$dir"
+	if [[ "$1" == */* ]] ; then
+		local dir="${1%/*}"
+		if [[ ! -e "$dir" ]] ; then
+			mkdir -p "$dir"
+		fi
 	fi
 }
 
