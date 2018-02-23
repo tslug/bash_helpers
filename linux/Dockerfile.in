@@ -3,7 +3,7 @@ FROM debian:stable
 RUN noint="DEBIAN_FRONTEND=noninteractive" \
 	norec="--no-install-recommends" \
 	apt-get update \
-	&& $noint apt-get install -y $norec openssl curl ca-certificates vim sudo \
+	&& $noint apt-get install -y $norec openssl curl ca-certificates vim sudo ircii \
 	&& curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
 	&& $noint apt-get install -y $norec --allow-unauthenticated git-lfs
 
