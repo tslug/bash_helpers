@@ -45,13 +45,22 @@ function echoerr()
 
 function arg_is_set()
 {
+
 	local arg
 	local comparison="$1"
 	shift
+
+	_arg_position=1
+	_next_arg_position=2
+
 	for arg in "$@" ; do
 		[[ "$arg" == "$comparison" ]] && return 0
+		_arg_position=$(($_arg_position+1))
+		_next_arg_position=$(($_arg_position+1))
 	done
+
 	return 1
+
 }
 
 function get_arg_count()
