@@ -91,14 +91,14 @@ function get_arg()
 	declare -i last_arg_index=-1
 	declare -i i=0
 	while [[ $i -le $# && $last_arg_index -lt $arg_number ]] ; do
-		eval _arg="\$$i"
+		eval _arg=\"\$$i\"
 		if [[ "$_arg" != -* ]] ; then
 			last_arg_index=$(($last_arg_index+1))
 		fi
 		i=$(($i+1))
 	done
 
-	test $last_arg_index -eq $arg_number
+	test $(($last_arg_index+1)) -eq $arg_number
 
 }
 
@@ -110,19 +110,20 @@ function win_path()
 function calculate_md5sum()
 {
 
-	local md5sum_cmd=md5sum
+	declare -a md5sum_cmd=()
 	local source="$1"
 
 	if [[ "$OS" == Darwin ]] ; then
-		md5sum_cmd="md5 -q"
-		if [[ "$source" == "-" ]] ; then
-			source=""
+		md5sum_cmd+=(md5 -q)
+		if [[ "$source" != "-" ]] ; then
+			md5sum_cmd+=("$source")
 		fi
+	else
+		md5sum_cmd+=(md5sum "$source")
 	fi
 
-	md5sum_cmd+=" $source"
-
-	_md5sum=($(eval $md5sum_cmd))
+	md5sum_output=($("${md5sum_cmd[@]}"))
+	_md5sum="${md5sum_output[0]}"
 
 }
 
