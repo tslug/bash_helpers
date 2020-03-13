@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright Dave Taylor, 2017.
 
@@ -6,12 +6,23 @@ bash_script_dir="${BASH_SOURCE%/*}"
 
 shopt -s expand_aliases
 
-OS="$(uname -s)"
 VERBOSE=false
 
 function set_verbose()
 {
 	VERBOSE=$1
+}
+
+function atomic_copy()
+{
+
+	local src_path="$1"
+	local dest_dir="$2"
+	local tmp_file="/tmp/atomic_copy_file.$BASHPID"
+
+	cp -p "$src_path" "$tmp_file"
+	mv "$tmp_file" "$dest_dir"
+
 }
 
 function get_indentation()
@@ -40,26 +51,146 @@ function verbose_log()
 
 function echoerr()
 {
-	echo "$@" 1>&2
+	echo -e "$@" 1>&2
+}
+
+# This sends the output of a command into an array without creating a subshell
+
+function cmd_to_array()
+{
+
+	one_line=false
+	if [[ "$1" == "--one-line" ]] ; then
+		one_line=true
+		shift
+	fi
+
+	local whitespace=false
+	if [[ "$1" == "-w" ]] ; then
+		whitespace=true
+		shift
+	fi
+
+	local array_name="$1"
+	shift
+	declare -a cmd=("$@")
+
+	local output_dir="$bash_script_dir/.variables"
+	local output_path="$output_dir/$array_name.$BASHPID"
+
+	if [[ ! -d "$output_dir" ]] ; then
+		mkdir -p "$output_dir"
+	fi
+
+	# This odd hack makes sure we capture the return value of the command
+	local ret
+	if eval "${cmd[@]}" > "$output_path" ; then
+		ret=$?
+	else
+		ret=$?
+	fi
+
+	# Only read one line of the output, otherwise read the whole thing into an array
+	if [[ $one_line == true ]] ; then
+		local line
+		read -r line < "$output_path"
+		eval $array_name=\(\'$line\'\)
+	else
+		mapfile -t $array_name < "$output_path"
+	fi
+
+	if [[ $whitespace == true ]] ; then
+		eval $array_name=\(\${$array_name[@]}\)
+	fi
+
+	rm -f "$output_path"
+
+	return $ret
+
+}
+
+# This sends the first line of a command's output into a variable without creating a subshell
+
+function cmd_to_var()
+{
+
+	local var_name="$1"
+	shift
+	declare -a cmd=("$@")
+
+	local ret
+	declare -a array
+
+	if cmd_to_array --one-line array "${cmd[@]}" ; then
+		ret=$?
+	else
+		ret=$?
+	fi
+
+	local var="${array[0]}"
+
+	eval $var_name=\'$var\'
+
+	return $ret
+
+}
+
+function strip_leading_zeroes()
+{
+
+	local string="$1"
+
+	_value=$((10#$string))
+
 }
 
 function arg_is_set()
 {
 
+	local ret_val=-1
+
+	# This is just like arg_index but adds one to the result,
+	#   which is more commonly used in positional parameters
+	#   instead of array indices
+
+	if arg_index "$@" ; then
+		ret_val=0
+		_arg_position=$(($_arg_position+1))
+		_next_arg_position=$(($_next_arg_position+1))
+	fi
+
+	return $ret_val
+
+}
+
+# Returns the index of a matching element and its next element
+#   in _arg_position and _next_arg_position.
+# Returns false if no match found
+
+function arg_index()
+{
+
 	local arg
+	local ret_val=-1
 	local comparison="$1"
 	shift
 
-	_arg_position=1
-	_next_arg_position=2
+	# The returned position is in functional position, which starts w/ 1,
+	#   not the same as array index position, which starts w/ 0.
+
+	_arg_position=0
 
 	for arg in "$@" ; do
-		[[ "$arg" == "$comparison" ]] && return 0
+		if [[ "$arg" == "$comparison" ]] ; then
+			ret_val=0
+			break
+		fi
 		_arg_position=$(($_arg_position+1))
-		_next_arg_position=$(($_arg_position+1))
 	done
 
-	return 1
+	_next_arg_position=$(($_arg_position+1))
+
+	return $ret_val
 
 }
 
@@ -83,28 +214,41 @@ function get_arg_count()
 function get_arg()
 {
 
-	declare -i arg_number=$1
+	declare -i requested_arg=$1
 	shift
 
 	_arg="(no args)"
 
-	declare -i last_arg_index=-1
-	declare -i i=0
-	while [[ $i -le $# && $last_arg_index -lt $arg_number ]] ; do
-		eval _arg=\"\$$i\"
-		if [[ "$_arg" != -* ]] ; then
-			last_arg_index=$(($last_arg_index+1))
+	declare -i arg_index=0
+	declare -i i=1
+	local found=false
+	local possible_arg
+
+	while [[ $i -le $# && $found == false ]] ; do
+
+		eval possible_arg=\"\$$i\"
+		if [[ "$possible_arg" != -* ]] ; then
+			arg_index=$arg_index+1
 		fi
-		i=$(($i+1))
+
+		if [[ $arg_index == $requested_arg ]] ; then
+			found=true
+			_arg="$possible_arg"
+		fi
+
+		i=$i+1
+
 	done
 
-	test $(($last_arg_index+1)) -eq $arg_number
+	test $found == true
 
 }
 
 function win_path()
 {
-	echo "$(cygpath -waml $1)"
+	local cygwin_path
+	cmd_to_var cygwin_path cygpath -waml "$1"
+	echo "$cygwin_path"
 }
 
 function calculate_md5sum()
@@ -122,10 +266,90 @@ function calculate_md5sum()
 		md5sum_cmd+=(md5sum "$source")
 	fi
 
-	md5sum_output=($("${md5sum_cmd[@]}"))
-	_md5sum="${md5sum_output[0]}"
+	cmd_to_var _md5sum "${md5sum_cmd[@]}"
 
 }
+
+function get_stack_trace()
+{
+
+
+	declare -i i=${#FUNCNAME[@]}
+	declare -i j=0
+
+	_stack_trace=""
+
+	if [[ $# -lt 1 || "$1" != "--quiet" ]] ; then
+		_stack_trace="\nStack trace:"
+	fi
+
+	while [[ $i -gt 1 ]] ; do
+		i=$i-1
+		j=$j+1
+		printf -v _stack_trace "%s\n%*s%s" "$_stack_trace" $j " " \
+			"${FUNCNAME[$i]} (${BASH_SOURCE[$i]##*/}:${BASH_LINENO[$i]})"
+	done
+
+}
+
+function start_process()
+{
+
+	local pid_path="$1"
+	shift
+	declare -a cmd_line=("$@")
+
+	trap at_exit EXIT
+	echo "$BASHPID" > "$pid_path"
+
+	"${cmd_line[@]}"
+
+}
+
+function launch_process()
+{
+
+	local name="$1"
+	shift
+	declare -a cmd_line=("$@")
+
+	local pid_path=/tmp/${BASH_SOURCE##*/}_${name}_pid.$BASHPID
+	mkfifo "$pid_path"
+
+	# setsid creates a new session group and thus new process group for
+	#   this process and its children.  This repleases start_process()
+	start_process "$pid_path" "${cmd_line[@]}" &
+
+	eval read _${name}_pid < "$pid_path"
+
+	rm -f "$pid_path"
+
+}
+
+function process_exists()
+{
+	local name="$1"
+	eval if [[ -z \$\{_${name}_pid\+x} ]] \; then return -1 \; fi
+	eval kill -0 \$_${name}_pid 2>/dev/null
+}
+
+function stop_process()
+{
+
+	local name="$1"
+
+	eval local pid=\$_${name}_pid
+
+	kill $pid > /dev/null 2>&1 || :
+
+	# Subprocesses require 0.5 to die, so this should be enough time
+	sleep 0.8
+
+	kill -9 $pid > /dev/null 2>&1 || :
+
+}
+
+cmd_to_var OS uname -s
 
 if [[ "$OS" == CYGWIN* ]] ; then
 	function native_path() { win_path "$@"; }
@@ -140,7 +364,7 @@ fi
 
 # save_vars_to_file <save_file> <var1> [var2] ...
 #   This will save all the named variables to the specified save file
-#   If save file not specified, put under $script_dir/.variables/function.
+#   If save file not specified, put under $bash_script_dir/.variables/function.
 
 function save_vars_to_file()
 {
@@ -159,13 +383,13 @@ alias load_vars_from_file=source
 
 function save_vars()
 {
-	_target_path="$script_dir/.variables/${FUNCNAME[1]}.$$"
+	_target_path="$bash_script_dir/.variables/${FUNCNAME[1]}.$BASHPID"
 	save_vars_to_file "$_target_path" $@
 }
 
 function load_vars()
 {
-	load_vars_from_file "$script_dir/.variables/$1.$$"
+	load_vars_from_file "$bash_script_dir/.variables/$1.$BASHPID"
 }
 
 function get_target_path()
@@ -299,7 +523,7 @@ function update_target_if_different()
 		copy_dependency_index $target_index 0
 		local target_dir="${target_path%/*}"
 		local target_filename="${target_path##*/}"
-		local temp_target_path="$target_dir/.${target_filename}_temp.$$"
+		local temp_target_path="$target_dir/.${target_filename}_temp.$BASHPID"
 		dependencies_targets[0]="$temp_target_path"
 
 		# If the function succeeds in generatin a file, then we check to see
@@ -435,7 +659,7 @@ function is_target_newer_than()
 
 function create_variables_dir()
 {
-	local dir="$script_dir/.variables"
+	local dir="$bash_script_dir/.variables"
 	if [[ ! -e "$dir" ]] ; then
 		mkdir -p "$dir"
 	fi
@@ -567,11 +791,29 @@ function generate_index_newer_than()
 
 }
 
+function start_profiling()
+{
+	PS4='(\T): '
+	exec 3>&2 2> /tmp/profile.$BASHPID
+	set -x
+}
+
+function stop_profiling()
+{
+	set +x
+	exec 2>&3 3>&-
+}
+
 exit_traps=()
 
 function add_exit_trap()
 {
 	exit_traps+=(${1/:/})
+}
+
+function remove_exit_trap()
+{
+	exit_traps=(${exit_traps[@]/$1})
 }
 
 function at_exit()
@@ -585,7 +827,8 @@ trap at_exit EXIT
 
 function clean_temporary_variables()
 {
-	rm -f "$bash_script_dir"/.variables/*.$$ "$script_dir"/.variables/*.$$
+	rm -f "$bash_script_dir"/.variables/*.$BASHPID \
+		"$bash_script_dir"/.variables/*.$BASHPID
 }
 
 add_exit_trap clean_temporary_variables
